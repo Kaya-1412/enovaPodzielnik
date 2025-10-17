@@ -1,20 +1,24 @@
-﻿using Microsoft.CodeAnalysis.VisualBasic.Syntax;
+﻿using Google.Apis.Util;
+using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Soneta.Business;
 using Soneta.Business.App;
+using Soneta.Business.Db;
+using Soneta.Business.UI;
 using Soneta.Core;
+using Soneta.Kadry;
+using Soneta.Kasa;
+using Soneta.Kasa.Extensions;
 using Soneta.Ksiega;
 using Soneta.Place;
 using Soneta.Towary;
+using Soneta.Types;
+using Soneta.Zadania;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Soneta.Kasa;
-using System.Collections.Immutable;
-using Soneta.Kasa.Extensions;
-using Soneta.Types;
-using Google.Apis.Util;
 
 namespace A1.PodzielWyplaty
 {
@@ -22,34 +26,21 @@ namespace A1.PodzielWyplaty
     {
 
         public List<Soneta.Place.Wyplata> wyp {  get; set; }
+        public ListaPlac lp { get; set; }
+
+        Dictionary<ElemSlownika, decimal> projekty = new();
+
 
         public PodzielWyplatyWorker(ListaPlac lp) 
         {
             this.wyp = lp.Wyplaty.ToList();
+            this.lp = lp;
         }
         public void Podziel()
         {
             foreach (Soneta.Place.Wyplata w in wyp)
             {
-                ElemSlownika projekt;
-               
-                Dictionary<ElemSlownika, decimal> projekty = new Dictionary<ElemSlownika, decimal>();
-                
-                
-                foreach(WypElement el in w.Elementy)
-                {
-                    projekt = el.Definicja.Features["Projekty"] as ElemSlownika;
-                   
-                    if(!projekty.TryAdd(projekt, el.Netto))
-                    {
-                        projekty[projekt] += el.Netto;
-                    }
-                }
-                foreach (var key in projekty)
-                    if (projekty[key.Key].Equals(decimal.Zero))
-                        projekty.Remove(key.Key);
-
-                
+                AddProjects(w);
                 KasaModule km = KasaModule.GetInstance(w.Session);
                 using (var t = w.Session.Logout(true))
                 {
@@ -129,5 +120,28 @@ namespace A1.PodzielWyplaty
             }
         }
 
+        public void AddProjects(Soneta.Place.Wyplata w)
+        {
+            ElemSlownika projekt;
+           
+            foreach (WypElement el in w.Elementy)
+            {
+                projekt = el.Definicja.Features["Projekty"] as ElemSlownika;
+                try
+                {
+                    if (!projekty.TryAdd(projekt, el.Netto))
+                    {
+                        projekty[projekt] += el.Netto;
+                    }
+                }
+                catch
+                {
+                    throw new Exception($"Element wynagrodzenia '{el.Nazwa}' ma nieprzypisany projekt.");
+                }
+            }
+            foreach (var key in projekty)
+                if (projekty[key.Key].Equals(decimal.Zero))
+                    projekty.Remove(key.Key);
+        }
     }
 }
