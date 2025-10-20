@@ -28,7 +28,7 @@ namespace A1.PodzielWyplaty
         public List<Soneta.Place.Wyplata> wyp {  get; set; }
         public ListaPlac lp { get; set; }
 
-        Dictionary<ElemSlownika, decimal> projekty = new();
+        Dictionary<ElemSlownika, decimal> projekty;
 
 
         public PodzielWyplatyWorker(ListaPlac lp) 
@@ -40,19 +40,18 @@ namespace A1.PodzielWyplaty
         {
             foreach (Soneta.Place.Wyplata w in wyp)
             {
+                projekty = new();
                 AddProjects(w);
                 KasaModule km = KasaModule.GetInstance(w.Session);
                 using (var t = w.Session.Logout(true))
                 {
                     w.ListaPlac.Features["Podzielona"] = true;
-                    foreach(Platnosc p in w.Platnosci)
+                    foreach(Zobowiazanie p in w.Platnosci)
                     {
                         decimal pozostalaWartoscPlatnosci = p.Kwota.Value;
                         
                         for (int i = 0; i < projekty.Keys.Count; i++)
                         {
-
-                            
                             var key = projekty.Keys.ElementAt(i);
                             
                         
@@ -91,7 +90,8 @@ namespace A1.PodzielWyplaty
                                     km.Platnosci.AddRow(zobowiazanie);
                                     zobowiazanie.Podmiot = p.Podmiot;
                                     zobowiazanie.SposobZaplaty = p.SposobZaplaty;
-                                    zobowiazanie.Rachunek = p.Rachunek;
+                                    if(zobowiazanie.SposobZaplaty.Equals(SposobZaplaty.Przelew))
+                                        zobowiazanie.Rachunek = p.Rachunek;
                                     zobowiazanie.EwidencjaSP = p.EwidencjaSP;
                                     zobowiazanie.Termin = p.Termin;
                                     zobowiazanie.Opis = $"Wypłata za: {key.ToString()}";
